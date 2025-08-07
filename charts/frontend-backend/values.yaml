@@ -1,0 +1,38 @@
+frontend:
+  enabled: true
+
+  # https://github.com/stakater/application/blob/main/application/values.yaml
+  replicaCount: 1
+  
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  ingress:
+    enabled: false
+    hosts:
+      - host: frontend.local
+        paths:
+          - /
+    tls: []
+
+
+backend:
+  enabled: true
+  
+  # https://github.com/stakater/application/blob/main/application/values.yaml
+  replicaCount: 1
+  
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  
+  ingress:
+    enabled: false
+    hosts:
+      - host: backend.local
+        paths:
+          - /
+    tls: []
