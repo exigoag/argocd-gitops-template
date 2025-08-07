@@ -1,9 +1,9 @@
-appName: "" # If Empty the Application name will be "in-cluster-sample-app"
-destNamespace: "" # If Empty the Application destination namespace will be "sample-app"
-destServer: "" # If Empty the Application destination server will be "in-cluster"
-repoURL: "" # If Empty the Application source repo will be this repo
-srcChart: "" # If Empty the Chart source will be "index .path.segments 2"
-srcTargetRevision: "" # If Empty the Application source target revision will be "develop"
+appName: "" # Override app name (default: {app-name}-{namespace-directory})
+destNamespace: "" # Override target namespace (default: your namespace directory name)
+destServer: "" # Override target cluster (default: your cluster directory name)
+repoURL: "" # Override source repository (default: this repository)
+srcChart: "" # Override Helm chart name (default: your app directory name)
+srcTargetRevision: "" # Override Git branch/tag (default: develop)
 labels: {} # Additional Application labels
 annotations:
   # https://argocd-image-updater.readthedocs.io/en/stable/configuration/images/
