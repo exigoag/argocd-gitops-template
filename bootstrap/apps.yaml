@@ -1,0 +1,81 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: gitops-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=default"]
+  generators:
+    - git:
+        repoURL: https://github.com/exigoag/argocd-gitops-template.git
+        revision: "develop"
+        requeueAfterSeconds: 20
+        files:
+          - path: "apps/**/app.yaml"
+        values:
+          project: "{{index .path.segments 1}}"
+          name: "{{index .path.segments 2}}"
+          cluster: "{{index .path.segments 3}}"
+          namespace: "{{index .path.segments 4}}"
+          base_path: "apps/{{index .path.segments 1}}/{{index .path.segments 2}}/base"
+          app_path: "{{.path.path}}"
+  template:
+    metadata:
+      name: '{{ default ( printf "%s-%s" .values.name .values.namespace ) .appName }}'
+      namespace: argocd
+    spec:
+      destination:
+        namespace: '{{ default .values.namespace .destNamespace }}'
+        name: '{{ default .values.cluster .destServer }}'
+      project: '{{.values.project}}'
+      syncPolicy:
+        automated:
+          allowEmpty: true
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 30
+          backoff:
+            duration: 20s
+            factor: 1
+            maxDuration: 20s
+        syncOptions:
+          - CreateNamespace=true
+          - DisableHelmChartCache=true
+  templatePatch: |
+    metadata:
+      labels:
+        app.kubernetes.io/name: '{{.values.name}}'
+        {{- range $key, $value := .labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      annotations:
+        {{- range $key, $value := .annotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      sources:
+        - repoURL: '{{ default "https://github.com/exigoag/argocd-gitops-template.git" .repoURL }}'
+          targetRevision: '{{ default "develop" .srcTargetRevision }}'
+          {{ if hasSuffix ".git" .repoURL }}
+          path: '{{ default .values.name .srcChart }}'
+          {{ else }}
+          chart: '{{ default .values.name .srcChart }}'
+          {{ end }}
+          helm:
+            releaseName: '{{ default .values.name .srcReleaseName }}'
+            valueFiles:
+              - "$repo/apps/{{ .values.project }}/base/values.yaml"
+              - "$repo/{{ .values.base_path }}/values.yaml"
+              - "$repo/{{ .values.app_path }}/values.yaml"
+            ignoreMissingValueFiles: true
+        - repoURL: "https://github.com/exigoag/argocd-gitops-template.git"
+          targetRevision: develop
+          ref: repo
+  ignoreApplicationDifferences:
+    - jqPathExpressions:
+        - .spec.sources[] | select(has("helm")).helm.parameters

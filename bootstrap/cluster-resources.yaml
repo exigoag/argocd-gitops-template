@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: cluster-resources
+  namespace: argocd
+spec:
+  generators:
+    - clusters: {}
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      labels:
+        argocd.argoproj.io/instance: '{{ nameNormalized }}'
+      name: cluster-{{nameNormalized}}
+      namespace: argocd
+    spec:
+      destination:
+        server: '{{server}}'
+      project: default
+      source:
+        path: cluster-resources/{{name}}
+        repoURL: https://github.com/exigoag/argocd-gitops-template.git
+        targetRevision: "develop"
+      syncPolicy:
+        automated:
+          allowEmpty: true
+          selfHeal: true
