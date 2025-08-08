@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/\\.ya?ml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/app\\.yaml$/"
+      ],
+      "matchStringsStrategy": "combination",
+      "datasourceTemplate": "helm",
+      "versioningTemplate": "helm",
+      "matchStrings": [
+        "repoURL:\\s*\"(?<registryUrl>.*)\"",
+        "srcChart:\\s*\"(?<depName>.*)\"",
+        "srcTargetRevision:\\s*\"(?<currentValue>.*)\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "helm"
+      ],
+      "automerge": false,
+      "labels": [
+        "helm-chart-update"
+      ]
+    }
+  ],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 1,
+  "prHourlyLimit": 0,
+  "separateMajorMinor": true,
+  "separateMinorPatch": true,
+  "commitMessagePrefix": "chore(deps): "
+}
