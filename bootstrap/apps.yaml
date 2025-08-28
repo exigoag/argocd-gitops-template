@@ -15,8 +15,23 @@ spec:
         revision: "develop"
         requeueAfterSeconds: 20
         files:
-          - path: "apps/**/app.yaml"
+          - path: "apps/**/develop.app.yaml"
         values:
+          revision: "develop"
+          project: "{{index .path.segments 1}}"
+          name: "{{index .path.segments 2}}"
+          cluster: "{{index .path.segments 3}}"
+          namespace: "{{index .path.segments 4}}"
+          base_path: "apps/{{index .path.segments 1}}/{{index .path.segments 2}}/base"
+          app_path: "{{.path.path}}"
+    - git:
+        repoURL: https://github.com/exigoag/argocd-gitops-template.git
+        revision: "main"
+        requeueAfterSeconds: 20
+        files:
+          - path: "apps/**/main.app.yaml"
+        values:
+          revision: "main"
           project: "{{index .path.segments 1}}"
           name: "{{index .path.segments 2}}"
           cluster: "{{index .path.segments 3}}"
@@ -46,6 +61,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - DisableHelmChartCache=true
+  # language=gotemplate
   templatePatch: |
     metadata:
       labels:
@@ -60,7 +76,7 @@ spec:
     spec:
       sources:
         - repoURL: '{{ default "https://github.com/exigoag/argocd-gitops-template.git" .repoURL }}'
-          targetRevision: '{{ default "develop" .srcTargetRevision }}'
+          targetRevision: '{{ default .values.revision .srcTargetRevision }}'
           {{ if hasSuffix ".git" .repoURL }}
           path: '{{ default .values.name .srcChart }}'
           {{ else }}
@@ -74,7 +90,7 @@ spec:
               - "$repo/{{ .values.app_path }}/values.yaml"
             ignoreMissingValueFiles: true
         - repoURL: "https://github.com/exigoag/argocd-gitops-template.git"
-          targetRevision: develop
+          targetRevision: '{{ .values.revision }}'
           ref: repo
   ignoreApplicationDifferences:
     - jqPathExpressions:
