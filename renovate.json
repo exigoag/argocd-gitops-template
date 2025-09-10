@@ -28,13 +28,29 @@
   ],
   "packageRules": [
     {
-      "matchDatasources": [
-        "helm"
+      "matchFileNames": [
+        "**/dev-cluster/**"
       ],
-      "automerge": false,
       "labels": [
-        "helm-chart-update"
-      ]
+        "env:nonprod"
+      ],
+      "groupName": "nonprod",
+      "automerge": true,
+      "minimumReleaseAge": "2 days",
+      "prPriority": 20
+    },
+    {
+      "matchFileNames": [
+        "**/in-cluster/**",
+        "**/prod-cluster/**"
+      ],
+      "labels": [
+        "env:prod"
+      ],
+      "groupName": "prod",
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "prPriority": 0
     }
   ],
   "dependencyDashboard": true,

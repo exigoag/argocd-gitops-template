@@ -1,10 +1,10 @@
 # ArgoCD GitOps Template
 
-A GitOps template for managing apps and cluster resources with ArgoCD ApplicationSets. It supports a branch-driven workflow (develop vs main) that works well with Renovate and staged promotions.
+A GitOps template for managing apps and cluster resources with ArgoCD ApplicationSets. It supports cluster-based deployments with Renovate handling staged promotions between nonprod and production environments.
 
 ## Highlights
-- Applications are auto-generated from folders and a branch-prefixed app manifest
-- Separate generators per Git branch (develop, main)
+- Applications are auto-generated from folders with a single app manifest per deployment
+- Renovate manages staged deployments based on cluster names (nonprod vs prod)
 - Cluster-wide resources managed per cluster
 - ArgoCD Projects isolate and govern apps
 
@@ -16,10 +16,10 @@ argocd-gitops-template/
 │       └── {app-name}/             # Application name
 │           └── {cluster}/          # Target cluster (must exist in ArgoCD)
 │               └── {namespace}/    # Target namespace
-│                   ├── <branch>.app.yaml  # One per leaf; e.g., develop.app.yaml OR main.app.yaml
-│                   └── values.yaml        # Helm values for this env
+│                   ├── app.yaml            # Application configuration
+│                   └── values.yaml         # Helm values for this env
 ├── bootstrap/                      # ArgoCD ApplicationSets
-│   ├── apps.yaml                   # Main application generator (per-branch)
+│   ├── apps.yaml                   # Main application generator
 │   ├── cluster-resources.yaml      # Cluster-wide resources generator
 │   └── projects.yaml               # Project generator (optional)
 ├── charts/                         # Optional local Helm charts
@@ -29,11 +29,11 @@ argocd-gitops-template/
     └── {project-name}.yaml
 ```
 
-Note: Typically you have exactly one `<branch>.app.yaml` per environment folder. Use `develop.app.yaml` for non-prod (dev/stage) and `main.app.yaml` for prod, each in their respective cluster/namespace folders.
+Note: Each deployment folder contains a single `app.yaml` file. Renovate handles deployment staging by treating clusters differently based on their names (nonprod vs prod clusters).
 
 ## How Application Generation Works
 
-If you're new to ApplicationSets, think of it like this: one Argo CD Application is created for each leaf folder under `apps/{project}/{app}/{cluster}/{namespace}`. The folder names tell Argo CD where to deploy, and a small YAML file in that folder provides optional overrides.
+If you're new to ApplicationSets, think of it like this: one Argo CD Application is created for each leaf folder under `apps/{project}/{app}/{cluster}/{namespace}`. The folder names tell Argo CD where to deploy, and the `app.yaml` file in that folder provides configuration and overrides.
 
 Directory-to-fields mapping:
 - project = `apps/{project}/...`
@@ -44,26 +44,26 @@ Directory-to-fields mapping:
 Example
 ```
 apps/sample-project/sample-app/in-cluster/sample-namespace/
-├── develop.app.yaml
+├── app.yaml
 └── values.yaml
 ```
 Generates an Argo CD Application that:
 - belongs to project `sample-project`
 - targets cluster `in-cluster`
 - deploys to namespace `sample-namespace`
-- is named `sample-app-sample-namespace` (unless overridden in the app file)
+- is named `sample-project-sample-app-in-cluster-sample-namespace` (deduplicated and lowercased, unless overridden)
 
-### Note on branches (optional)
-If you keep multiple branches, name your app file accordingly, e.g.:
-- `develop.app.yaml` → tracks the `develop` branch
-- `main.app.yaml` → tracks the `main` branch
+### Renovate-Based Staging
+Renovate handles deployment staging by treating clusters differently based on their names:
+- **Nonprod clusters**: Matched by `/dev-cluster/` pattern - auto-merge enabled, 2 days minimum release age
+- **Prod clusters**: Matched by `/in-cluster/` and `/prod-cluster/` patterns - manual approval required, 7 days minimum release age
 
-To support another branch, add a generator in `bootstrap/apps.yaml` that matches `apps/**/<branch>.app.yaml` and sets `values.revision` to that branch.
+This configuration is defined in `renovate.json` and eliminates the need for branch-based workflows.
 
 ### Source Selection and Overrides
-By default the Application sources from this repo and derives sensible defaults from the path, but you can override in the app file:
+By default the Application sources from this repo (main branch) and derives sensible defaults from the path, but you can override in the app file:
 - `repoURL`: source Git repo or Helm registry
-- `targetRevision`: comes from the generator (e.g., develop/main) or `srcTargetRevision`
+- `srcTargetRevision`: Git branch/tag (default: main)
 - If `repoURL` ends with `.git`, `srcChart` is treated as a path; otherwise as a registry chart name
 
 Helm value files are merged (later wins):
@@ -90,26 +90,26 @@ apps/
         values.yaml       # 2) app defaults
       dev-cluster/
         my-namespace/
-          values.yaml     # 3) env-specific overrides
-          develop.app.yaml
+          app.yaml        # 3) deployment-specific config
+          values.yaml     # 3) deployment-specific overrides
 ```
 
-## App File Schema (develop.app.yaml / main.app.yaml)
+## App File Schema (app.yaml)
 Place in: `apps/{project}/{app}/{cluster}/{namespace}/`
 
 ```yaml
-appName: ""           # Override app name (default: {app-name}-{namespace-directory})
+appName: ""           # Override app name (default: {project}-{app-name}-{cluster}-{namespace} deduplicated and lowercased)
 destNamespace: ""     # Override target namespace (default: {namespace-directory})
 destServer: ""        # Override target cluster (default: {cluster-directory})
 repoURL: ""           # Override source repo (default: this repo)
 srcChart: ""          # Override Helm chart (default: {app-name})
-srcTargetRevision: "" # Override Git branch/tag (default: from the generator, e.g., develop or main)
-labels: {}             # Extra labels
-annotations:           # Annotations (e.g., Argo CD Image Updater)
+srcTargetRevision: "" # Override Git branch/tag (default: main)
+labels: {}            # Additional Application labels
+annotations:          # Annotations (e.g., Argo CD Image Updater)
   # argocd-image-updater.argoproj.io/image-list: app=registry.example.com/app:*
 ```
 
-Tip: You can use both `develop.app.yaml` and `main.app.yaml` in the repository, but place them in the appropriate environment folders (e.g., `develop.app.yaml` under dev/stage clusters and `main.app.yaml` under prod clusters). Typically, there is one app file per leaf folder.
+Each deployment folder contains exactly one `app.yaml` file that defines the application configuration for that specific cluster/namespace combination.
 
 ## Cluster Resources
 Put cluster-scoped resources under `cluster-resources/{cluster-name}/`, for example:
@@ -129,6 +129,20 @@ Projects can be defined here, but must exist in ArgoCD before Applications refer
 - ArgoCD installed in your cluster
 - Clusters pre-registered in ArgoCD (names must match your `{cluster}` folder names)
 - Projects created or managed here and applied before apps render
+
+### Adding Clusters
+When adding clusters to ArgoCD, use short descriptive names to keep application names readable:
+
+```bash
+# Good: Short, descriptive names
+argocd cluster add my-k8s-context --name dev-cluster
+argocd cluster add my-prod-context --name prod-cluster
+
+# Avoid: Long server URLs as names (default behavior)
+# This would create very long application names
+```
+
+The cluster name you specify with `--name` becomes part of the generated application name, so choose wisely!
 
 ## Bootstrap
 Apply this Application to the ArgoCD cluster and update the repo URL to yours:
@@ -167,57 +181,112 @@ kubectl get applicationsets -n argocd
 
 ## Add a New App (Example)
 
-Example structure for a staging environment:
+Example structure for a nonprod deployment using podinfo:
 ```
-apps/my-project/my-app/dev-cluster/my-namespace/
-├── develop.app.yaml
+apps/sample-project/podinfo/dev-cluster/podinfo-ns/
+├── app.yaml
 └── values.yaml
 ```
 
-develop.app.yaml
+app.yaml
 ```yaml
-# apps/my-project/my-app/dev-cluster/my-namespace/develop.app.yaml
-annotations:
-  argocd-image-updater.argoproj.io/image-list: my-app=registry.example.com/my-app:*
+# apps/sample-project/podinfo/dev-cluster/podinfo-ns/app.yaml
+repoURL: "https://stefanprodan.github.io/podinfo"
+srcChart: "podinfo"
+srcTargetRevision: "6.9.1"
 ```
 
 values.yaml
 ```yaml
-# apps/my-project/my-app/dev-cluster/my-namespace/values.yaml
-image:
-  repository: registry.example.com/my-app
-  tag: v1.2.3
+# apps/sample-project/podinfo/dev-cluster/podinfo-ns/values.yaml
+replicaCount: 1
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
 ```
 
-When ready for production, create a prod folder:
+For production, create a prod cluster deployment:
 ```
-apps/my-project/my-app/prod-cluster/my-namespace/
-└── main.app.yaml
+apps/sample-project/podinfo/prod-cluster/podinfo-ns/
+├── app.yaml
+└── values.yaml
 ```
 
-main.app.yaml
+app.yaml
 ```yaml
-# apps/my-project/my-app/prod-cluster/my-namespace/main.app.yaml
-repoURL: oci://ghcr.io/YOUR-ORG/charts
-srcChart: my-app
-# srcTargetRevision: 1.2.3
+# apps/sample-project/podinfo/prod-cluster/podinfo-ns/app.yaml
+repoURL: "https://stefanprodan.github.io/podinfo"
+srcChart: "podinfo"
+srcTargetRevision: "6.9.1"
 ```
 
-## Add Support for Another Branch
-Edit `bootstrap/apps.yaml` and add another generator matching your filename, e.g. `release.app.yaml`, and set:
-- `files: - path: "apps/**/release.app.yaml"`
-- `values.revision: "release"`
+values.yaml
+```yaml
+# apps/sample-project/podinfo/prod-cluster/podinfo-ns/values.yaml
+replicaCount: 3
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+```
 
-Commit and sync. Any `release.app.yaml` files will now render Applications from the `release` branch.
+Renovate will automatically:
+- Deploy updates to nonprod clusters (`dev-cluster`) with auto-merge after 2 days
+- Create PRs for prod clusters (`in-cluster`, `prod-cluster`) requiring manual approval after 7 days
+
+## Renovate Configuration
+
+Renovate handles deployment staging automatically based on cluster naming patterns defined in `renovate.json`:
+
+```json
+{
+  "packageRules": [
+    {
+      "matchFileNames": ["**/dev-cluster/**"],
+      "labels": ["env:nonprod"],
+      "groupName": "nonprod",
+      "automerge": true,
+      "minimumReleaseAge": "2 days",
+      "prPriority": 20
+    },
+    {
+      "matchFileNames": ["**/in-cluster/**", "**/prod-cluster/**"],
+      "labels": ["env:prod"],
+      "groupName": "prod", 
+      "automerge": false,
+      "minimumReleaseAge": "7 days",
+      "prPriority": 0
+    }
+  ]
+}
+```
+
+**Nonprod Clusters** (glob pattern: `**/dev-cluster/**`):
+- Labeled with `env:nonprod`
+- Auto-merge enabled
+- 2 days minimum release age
+- Higher priority (20)
+
+**Prod Clusters** (glob patterns: `**/in-cluster/**`, `**/prod-cluster/**`):
+- Labeled with `env:prod` 
+- Manual approval required (auto-merge disabled)
+- 7 days minimum release age
+- Lower priority (0)
+
+To add new cluster types, update the `packageRules` with appropriate `matchFileNames` patterns.
 
 ## Best Practices
 - Keep app and namespace names short and kebab-case
-- Use Renovate to update charts/images in `develop` first, then promote by merging to `main`
-- Keep per-env differences in `values.yaml`
+- Use Renovate's automatic staging: updates flow from nonprod to prod clusters based on cluster naming
+- Keep deployment-specific differences in `values.yaml`
+- Name clusters according to the Renovate patterns for proper staging behavior
 
 ## Troubleshooting
-- App didn’t appear: check the folder depth and that the app file exists
-- Wrong branch: confirm the filename matches `<branch>.app.yaml` or set `srcTargetRevision`
+- App didn't appear: check the folder depth and that the `app.yaml` file exists
 - Cluster mismatch: ensure the Argo CD cluster name matches your `{cluster}` folder
 - Project not found: make sure the `AppProject` exists in Argo CD before apps render
 

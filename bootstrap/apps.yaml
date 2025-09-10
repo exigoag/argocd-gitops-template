@@ -12,26 +12,11 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/exigoag/argocd-gitops-template.git
-        revision: "develop"
-        requeueAfterSeconds: 20
-        files:
-          - path: "apps/**/develop.app.yaml"
-        values:
-          revision: "develop"
-          project: "{{index .path.segments 1}}"
-          name: "{{index .path.segments 2}}"
-          cluster: "{{index .path.segments 3}}"
-          namespace: "{{index .path.segments 4}}"
-          base_path: "apps/{{index .path.segments 1}}/{{index .path.segments 2}}/base"
-          app_path: "{{.path.path}}"
-    - git:
-        repoURL: https://github.com/exigoag/argocd-gitops-template.git
         revision: "main"
         requeueAfterSeconds: 20
         files:
-          - path: "apps/**/main.app.yaml"
+          - path: "apps/**/app.yaml"
         values:
-          revision: "main"
           project: "{{index .path.segments 1}}"
           name: "{{index .path.segments 2}}"
           cluster: "{{index .path.segments 3}}"
@@ -40,7 +25,7 @@ spec:
           app_path: "{{.path.path}}"
   template:
     metadata:
-      name: '{{ default ( printf "%s-%s" .values.name .values.namespace ) .appName }}'
+      name: '{{ default .appName ( join "-" ( uniq ( compact ( list .values.project .values.name .values.cluster .values.namespace ) ) ) ) | lower }}'
       namespace: argocd
     spec:
       destination:
@@ -76,7 +61,7 @@ spec:
     spec:
       sources:
         - repoURL: '{{ default "https://github.com/exigoag/argocd-gitops-template.git" .repoURL }}'
-          targetRevision: '{{ default .values.revision .srcTargetRevision }}'
+          targetRevision: '{{ default "main" .srcTargetRevision }}'
           {{ if hasSuffix ".git" .repoURL }}
           path: '{{ default .values.name .srcChart }}'
           {{ else }}
@@ -90,7 +75,11 @@ spec:
               - "$repo/{{ .values.app_path }}/values.yaml"
             ignoreMissingValueFiles: true
         - repoURL: "https://github.com/exigoag/argocd-gitops-template.git"
-          targetRevision: '{{ .values.revision }}'
+          {{ if hasSuffix ".git" .repoURL }}
+          targetRevision: '{{ default "main" .srcTargetRevision }}'
+          {{ else }}
+          targetRevision: main
+          {{ end }}
           ref: repo
   ignoreApplicationDifferences:
     - jqPathExpressions:

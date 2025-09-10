@@ -2,37 +2,45 @@ frontend:
   enabled: true
 
   # https://github.com/stakater/application/blob/main/application/values.yaml
-  replicaCount: 1
-  
-  image:
-    repository: ""
-    tag: ""
-    pullPolicy: IfNotPresent
+  replicas: 1
+
+  deployment:
+    image:
+      repository: ""
+      tag: ""
+      pullPolicy: IfNotPresent
   
   ingress:
     enabled: false
     hosts:
       - host: frontend.local
         paths:
-          - /
+          - path: /
     tls: []
+
+  vpa:
+    enabled: true
 
 
 backend:
   enabled: true
   
   # https://github.com/stakater/application/blob/main/application/values.yaml
-  replicaCount: 1
+  replicas: 1
   
-  image:
-    repository: ""
-    tag: ""
-    pullPolicy: IfNotPresent
+  deployment:
+    image:
+      repository: ""
+      tag: ""
+      pullPolicy: IfNotPresent
   
   ingress:
     enabled: false
     hosts:
       - host: backend.local
         paths:
-          - /
+          - path: /
     tls: []
+
+  vpa:
+    enabled: true
