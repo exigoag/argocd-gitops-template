@@ -23,7 +23,9 @@ spec:
       source:
         path: cluster-resources/{{name}}
         repoURL: https://github.com/exigoag/argocd-gitops-template.git
-        targetRevision: "develop"
+        targetRevision: "main"
+        directory:
+          recurse: true
       syncPolicy:
         automated:
           allowEmpty: true

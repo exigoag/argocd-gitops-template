@@ -1,14 +1,14 @@
-appName: "" # Override app name (default: {app-name}-{namespace-directory})
+appName: "" # Override app name (default: {project}-{app-name}-{cluster}-{namespace-directory} deduplicated and lowercased)
 destNamespace: "" # Override target namespace (default: your namespace directory name)
 destServer: "" # Override target cluster (default: your cluster directory name)
-repoURL: "" # Override source repository (default: this repository)
-srcChart: "" # Override Helm chart name (default: your app directory name)
-srcTargetRevision: "" # Override Git branch/tag (default: develop)
+repoURL: "https://stefanprodan.github.io/podinfo" # Override source repository (default: this repository)
+srcChart: "podinfo" # Override Helm chart name (default: your app directory name)
+srcTargetRevision: "6.9.1" # Override Git branch/tag (default: main)
 labels: {} # Additional Application labels
-annotations:
+annotations: {}
   # https://argocd-image-updater.readthedocs.io/en/stable/configuration/images/
-  argocd-image-updater.argoproj.io/image-list: sample-app=sample-repo.sample.ch/sample-app:*
-  argocd-image-updater.argoproj.io/exigate.pull-secret: pullsecret:ns/secret
-  argocd-image-updater.argoproj.io/exigate.update-strategy: semver
-  argocd-image-updater.argoproj.io/exigate.helm.image-name: image.repository
-  argocd-image-updater.argoproj.io/exigate.helm.image-tag: image.tag
+  #argocd-image-updater.argoproj.io/image-list: sample-app=sample-repo.sample.ch/sample-app:*
+  #argocd-image-updater.argoproj.io/exigate.pull-secret: pullsecret:ns/secret
+  #argocd-image-updater.argoproj.io/exigate.update-strategy: semver
+  #argocd-image-updater.argoproj.io/exigate.helm.image-name: image.repository
+  #argocd-image-updater.argoproj.io/exigate.helm.image-tag: image.tag
