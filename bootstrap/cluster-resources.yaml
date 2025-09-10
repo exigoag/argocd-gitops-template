@@ -14,7 +14,7 @@ spec:
     metadata:
       labels:
         argocd.argoproj.io/instance: '{{ nameNormalized }}'
-      name: cluster-{{nameNormalized}}
+      name: "{{nameNormalized}}-cluster"
       namespace: argocd
     spec:
       destination:
