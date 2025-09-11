@@ -75,11 +75,7 @@ spec:
               - "$repo/{{ .values.app_path }}/values.yaml"
             ignoreMissingValueFiles: true
         - repoURL: "https://github.com/exigoag/argocd-gitops-template.git"
-          {{ if hasSuffix ".git" .repoURL }}
-          targetRevision: '{{ default "main" .srcTargetRevision }}'
-          {{ else }}
           targetRevision: main
-          {{ end }}
           ref: repo
   ignoreApplicationDifferences:
     - jqPathExpressions:
