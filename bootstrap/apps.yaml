@@ -7,6 +7,9 @@ metadata:
   name: gitops-apps
   namespace: argocd
 spec:
+## IMPORTANT: enable preserveResourcesOnDeletion before changing anything in here to prevent unwanted uninstall/redeploy of apps, remove again afterwards
+#  syncPolicy:
+#    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions: ["missingkey=default"]
   generators:
@@ -25,7 +28,7 @@ spec:
           app_path: "{{.path.path}}"
   template:
     metadata:
-      name: '{{ default .appName ( join "-" ( uniq ( compact ( list .values.project .values.name .values.cluster .values.namespace ) ) ) ) | lower }}'
+      name: '{{ default .appName ( join "-" ( uniq ( splitList "-" ( join "-" ( compact ( list .values.cluster .values.project .values.namespace .values.name ) ) ) ) ) ) | lower }}'
       namespace: argocd
     spec:
       destination:
