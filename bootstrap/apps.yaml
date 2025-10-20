@@ -80,6 +80,10 @@ spec:
         - repoURL: "https://github.com/exigoag/argocd-gitops-template.git"
           targetRevision: main
           ref: repo
+      {{ with .ignoreDifferences }}
+      ignoreDifferences:
+        {{ toYaml . | nindent 8 }}
+      {{ end }}          
   ignoreApplicationDifferences:
     - jqPathExpressions:
         - .spec.sources[] | select(has("helm")).helm.parameters
