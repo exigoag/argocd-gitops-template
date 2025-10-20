@@ -49,6 +49,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - DisableHelmChartCache=true
+          - RespectIgnoreDifferences=true
   # language=gotemplate
   templatePatch: |
     metadata:
