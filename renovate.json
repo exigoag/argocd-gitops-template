@@ -13,16 +13,31 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "OCI-based Helm charts",
       "managerFilePatterns": [
         "/app\\.yaml$/"
       ],
-      "matchStringsStrategy": "combination",
+      "matchStringsStrategy": "recursive",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "helm",
+      "matchStrings": [
+        "repoURL:\\s*\"oci://(?<registryUrl>[^/]+)/(?<path>.*)\"[\\s\\S]*?srcChart:\\s*\"(?<chart>.*)\"[\\s\\S]*?srcTargetRevision:\\s*\"(?<currentValue>.*)\""
+      ],
+      "depNameTemplate": "{{chart}}",
+      "packageNameTemplate": "{{path}}/{{chart}}",
+      "registryUrlTemplate": "https://{{registryUrl}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Standard Helm charts (HTTP/HTTPS)",
+      "managerFilePatterns": [
+        "/app\\.yaml$/"
+      ],
+      "matchStringsStrategy": "recursive",
       "datasourceTemplate": "helm",
       "versioningTemplate": "helm",
       "matchStrings": [
-        "repoURL:\\s*\"(?<registryUrl>.*)\"",
-        "srcChart:\\s*\"(?<depName>.*)\"",
-        "srcTargetRevision:\\s*\"(?<currentValue>.*)\""
+        "repoURL:\\s*\"(?<registryUrl>https?://\\S+)\"[\\s\\S]*?srcChart:\\s*\"(?<depName>\\S+)\"[\\s\\S]*?srcTargetRevision:\\s*\"(?<currentValue>\\S+)\""
       ]
     }
   ],

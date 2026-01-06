@@ -64,10 +64,16 @@ spec:
         {{- end }}
     spec:
       sources:
-        - repoURL: '{{ default "https://github.com/exigoag/argocd-gitops-template.git" .repoURL }}'
-          targetRevision: '{{ default "main" .srcTargetRevision }}'
+        - targetRevision: '{{ default "main" .srcTargetRevision }}'
+          {{ if hasPrefix "oci://" .repoURL }}
+          repoURL: '{{.repoURL }}/{{ .srcChart }}'
+          {{ else }}
+          repoURL: '{{ default "https://github.com/exigoag/argocd-gitops-template.git" .repoURL }}'
+          {{ end }}
           {{ if hasSuffix ".git" .repoURL }}
           path: '{{ default .values.name .srcChart }}'
+          {{ else if hasPrefix "oci://" .repoURL}}
+          path: "."
           {{ else }}
           chart: '{{ default .values.name .srcChart }}'
           {{ end }}
@@ -83,8 +89,8 @@ spec:
           ref: repo
       {{ with .ignoreDifferences }}
       ignoreDifferences:
-        {{ toYaml . | nindent 8 }}
-      {{ end }}          
+      {{ toYaml . | nindent 8 }}
+      {{ end }}
   ignoreApplicationDifferences:
     - jqPathExpressions:
         - .spec.sources[] | select(has("helm")).helm.parameters
