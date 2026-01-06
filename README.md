@@ -154,8 +154,8 @@ metadata:
   finalizers:
   - resources-finalizer.argocd.argoproj.io
   labels:
-    app.kubernetes.io/name: exigitops
-  name: exigitops
+    app.kubernetes.io/name: argocd-gitops-template
+  name: argocd-gitops-template
   namespace: argocd
 spec:
   destination:
@@ -164,7 +164,7 @@ spec:
   project: default
   source:
     path: bootstrap
-    repoURL: https://github.com/YOUR-ORG/argocd-gitops-template.git
+    repoURL: https://github.com/exigoag/argocd-gitops-template.git
   syncPolicy:
     automated:
       allowEmpty: true
