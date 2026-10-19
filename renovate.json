@@ -12,32 +12,42 @@
   },
   "customManagers": [
     {
-      "customType": "regex",
-      "description": "OCI-based Helm charts",
+      "customType": "jsonata",
+      "description": "Git-hosted Helm charts pinned to semantic version tags",
+      "fileFormat": "yaml",
       "managerFilePatterns": [
         "/app\\.yaml$/"
       ],
-      "matchStringsStrategy": "recursive",
+      "datasourceTemplate": "gitlab-tags",
+      "versioningTemplate": "semver",
+      "matchStrings": [
+        "$[repoURL and srcChart and srcTargetRevision and $contains(srcTargetRevision, /^v?\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/)].($repo := $match(repoURL, /^(https?:\\/\\/[^/\\s]+)\\/(\\S+)\\.git$/); $repo ? {\"registryUrl\": $repo.groups[0], \"depName\": $repo.groups[1], \"currentValue\": srcTargetRevision})"
+      ]
+    },
+    {
+      "customType": "jsonata",
+      "description": "OCI-based Helm charts",
+      "fileFormat": "yaml",
+      "managerFilePatterns": [
+        "/app\\.yaml$/"
+      ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "helm",
       "matchStrings": [
-        "repoURL:\\s*\"oci://(?<registryUrl>[^/]+)/(?<path>.*)\"[\\s\\S]*?srcChart:\\s*\"(?<chart>.*)\"[\\s\\S]*?srcTargetRevision:\\s*\"(?<currentValue>.*)\""
-      ],
-      "depNameTemplate": "{{chart}}",
-      "packageNameTemplate": "{{path}}/{{chart}}",
-      "registryUrlTemplate": "https://{{registryUrl}}"
+        "$[repoURL and srcChart and srcTargetRevision].($repo := $match(repoURL, /^oci:\\/\\/([^/\\s]+)\\/(\\S+)$/); $repo ? {\"registryUrl\": 'https://' & $repo.groups[0], \"depName\": srcChart, \"packageName\": $repo.groups[1] & '/' & srcChart, \"currentValue\": srcTargetRevision})"
+      ]
     },
     {
-      "customType": "regex",
+      "customType": "jsonata",
       "description": "Standard Helm charts (HTTP/HTTPS)",
+      "fileFormat": "yaml",
       "managerFilePatterns": [
         "/app\\.yaml$/"
       ],
-      "matchStringsStrategy": "recursive",
       "datasourceTemplate": "helm",
       "versioningTemplate": "helm",
       "matchStrings": [
-        "repoURL:\\s*\"(?<registryUrl>https?://\\S+)\"[\\s\\S]*?srcChart:\\s*\"(?<depName>\\S+)\"[\\s\\S]*?srcTargetRevision:\\s*\"(?<currentValue>\\S+)\""
+        "$[repoURL and srcChart and srcTargetRevision and $contains(repoURL, /^https?:\\/\\//) and $not($contains(repoURL, /\\.git$/))].{\"registryUrl\": repoURL, \"depName\": srcChart, \"currentValue\": srcTargetRevision}"
       ]
     }
   ],
@@ -69,6 +79,9 @@
     }
   ],
   "dependencyDashboard": true,
+  "minimumReleaseAge": "1 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "internalChecksFilter": "strict",
   "prConcurrentLimit": 1,
   "prHourlyLimit": 0,
   "separateMajorMinor": true,
